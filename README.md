@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-Centurion 是一个基于 WebSocket 的远程浏览器控制系统，通过在目标网页中注入 JavaScript Agent 来实现对受害者浏览器的远程监控和控制。
+Centurion 是一个基于 WebSocket 的远程浏览器控制系统，通过在目标网页中注入 JavaScript Agent 来实现对受害者浏览器的远程监控和控制。建议通过cloudflare来隐藏真实服务器IP。
 
 **⚠️ 警告：本项目仅供安全研究和授权渗透测试使用，未经授权使用属于违法行为。**
 
